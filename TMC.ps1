@@ -1,17 +1,43 @@
+<#
+.SYNOPSIS
+    Consolidates, cleanses, and maps multi-source threat intelligence data into formatted Excel reports.
+.DESCRIPTION
+    The TMC script acts as an enterprise-grade Threat Intelligence parsing engine. It instantiates 
+    a specialized .NET class structure that handles low-level COM automation with Microsoft Excel. 
+    It parses incoming workbooks, cleanses noise out of malware actor naming structures, normalizes and 
+    deduplicates raw text data using underlying high-performance [HashSet] structures, and routes 
+    cleansed indicators into strict schema-compliant Excel spreadsheets and structured STIX-like reports.
+.PARAMETER WorkBooks
+    An array of absolute or relative string paths pointing to the source workbook files to ingest.
+.EXAMPLE
+    .\TMC.ps1 -WorkBooks "D:\IOCs\ActorGroupA.xlsx"
+.EXAMPLE
+    .\TMC.ps1 -WorkBooks "D:\IOCs\ActorGroupA.xlsx","D:\IOCs\CampaignB.xlsx",,"D:\IOCs\CampaignC.xlsx"
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+    Prerequisites: Requires local installation of Microsoft Excel (COM Interop validation executed against HKLM).
+    Safety: Implements programmatic Marshal COM reference release wrappers to eliminate zombie excel.exe processes.
+#>
+
+
 [CmdletBinding()]
 param (
     [Parameter(Mandatory)]
     [string[]]$WorkBooks
 )
 
+# Import required dependency baseline components for IOC parsing, Excel report generation, and file movement operations
 . $PSScriptRoot\root\IOC.ps1
 . $PSScriptRoot\root\ExcelReport.ps1
 . $PSScriptRoot\Move.ps1
 class TMC {
+    # --- Class Properties ---
     [System.Collections.Generic.Dictionary[string, System.Collections.Generic.HashSet[String]]]$IOCData
     [string[]]$WorkBooks
     [System.Object]$Excel
-
+    
+    # Metrics Telemetry Counters
     [int]$MD5Count = 0
     [int]$SHA1Count = 0
     [int]$SHA256Count = 0
@@ -21,7 +47,8 @@ class TMC {
     [int]$IPCount = 0
     [int]$OtherCount = 0
     [int]$Total = 0
-    
+
+    # Highly efficient deduplicated text storage buckets for each observable type, leveraging .NET HashSet for O(1) complexity on add and lookup operations, ensuring that the script can handle large volumes of indicators without performance degradation
     [System.Collections.Generic.HashSet[String]]$MD5
     [System.Collections.Generic.HashSet[String]]$SHA1
     [System.Collections.Generic.HashSet[String]]$SHA256
@@ -31,9 +58,11 @@ class TMC {
     [System.Collections.Generic.HashSet[String]]$Emails
     [System.Collections.Generic.HashSet[String]]$OtherIOCs
 
+    # Type-constrained reporting data streams that accumulate structured PSCustomObjects for each observable type, which are then passed to the Excel report generation engine, ensuring that the data adheres to a consistent schema and can be easily manipulated for reporting purposes
     [System.Collections.Generic.List[PSCustomObject]]$HashReportData
     [System.Collections.Generic.List[PSCustomObject]]$OtherIndicatorsReportData
 
+    # Explicit Cryptographic and Network Validation Regex Patterns to ensure that only well-formed indicators are processed and included in the final reports, reducing noise and improving the quality of the threat intelligence output
     [String]$MD5_Validator = "^[a-fA-F0-9]{32}$"
     [String]$SHA1_Validator = "^[a-fA-F0-9]{40}$"
     [String]$SHA256_Validator = "^[a-fA-F0-9]{64}$"
@@ -44,6 +73,8 @@ class TMC {
     [String]$IPV6Validator = "^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$"
 
 
+    # --- Constructor ---
+    # Purpose: Populates task payloads, spins up background Excel COM hooks, and allocates memory blocks.
     TMC([string[]]$WorkBooks) {
         $this.WorkBooks = $WorkBooks
         $this.Excel = New-Object -ComObject Excel.Application
@@ -64,6 +95,11 @@ class TMC {
     }
 
 
+    # --- Method: ClearAllLists ---
+    # Purpose: Resets all underlying volatile hash collections between sheet generation cycles. 
+    # This ensures that data from previous iterations does not contaminate subsequent report generations, 
+    # maintaining the integrity and accuracy of the output while allowing the script to process multiple  
+    # workbooks in a single execution without manual intervention.
     [void] ClearAllLists() {
         $this.MD5.Clear()
         $this.SHA1.Clear()
@@ -75,6 +111,8 @@ class TMC {
         $this.OtherIOCs.Clear()
     }
 
+    # --- Method: UpdateCount ---
+    # Purpose: Flushes current active list snapshots over to running global analytics totals. This method is invoked after each workbook processing cycle to ensure that the final report includes accurate counts of each indicator type, which can be used for metrics tracking, reporting, and further analysis.
     [Void] UpdateCount() {
         $this.MD5Count += $this.MD5.Count
         $this.SHA1Count += $this.SHA1.Count
@@ -88,16 +126,24 @@ class TMC {
         [int]$this.Total = $this.MD5Count + $this.SHA1Count + $this.SHA256Count + $this. DomainsCount + $this.URLsCount + $this.EmailsCount + $this.IPCount + $this.OtherCount
     }
 
+    # --- Method: GetFileName ---
+    # Purpose: Formats a standardized, localized name for report output files based on active date metadata. 
+    # This method ensures that generated reports have consistent and descriptive names that include the month, 
+    # day, and year of report generation, improving organization and traceability of threat intelligence outputs.
     [String] GetFileName() {
         [datetime]$Date = Get-Date
         [string]$Month = (Get-Culture).DateTimeFormat.GetMonthName($Date.Month)
         return "TMC Threat Bytes $Month $($Date.Day) $($Date.Year)"
     }
 
+    # --- Method: IsValidPath ---
+    # Purpose: Verifies target workspace file path existence natively. This method is used to ensure that the script does not attempt to process non-existent files, which could lead to errors or exceptions. By validating the file paths before attempting to read or process them, the script can fail gracefully with informative error messages, improving user experience and robustness.
     [bool] IsValidPath([string]$Path) {
         return Test-Path -Path $Path
     }
 
+    # --- Method: IPExtractorFromURLs ---
+    # Purpose: Inline URL sub-parser that pulls raw embedded IPv4 strings straight out of urls.
     [Void] IPExtractorFromURLs([string]$Indicator) {
         [string]$ipLookup = "(https?|hxxps?|ftp)://(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"
         if ($Indicator -match $ipLookup) {
@@ -109,6 +155,8 @@ class TMC {
         }
     }
 
+    # --- Method: HashReport ---
+    # Purpose: Compiles a standardized 23-column STIX-compliant hash metadata entry for reporting pools. This method takes in a malware name and an observable value, validates the hash against known patterns, and constructs a structured PSCustomObject that can be easily consumed by the Excel report generation engine, ensuring that all hash indicators are reported with consistent metadata and formatting.
     [void] HashReport([string]$MalwareName, [String]$ObservableValue) {
         $ReportEntry = [PSCustomObject]@{
             "fileName"              = " "
@@ -141,6 +189,8 @@ class TMC {
         $this.HashReportData.Add($ReportEntry) | Out-Null; 
     }
 
+    # --- Method: OtherIndicatorsReport ---
+    # Purpose: Generates structured, UTC-normalized observational logs for non-file network metrics. This method constructs a standardized report entry for indicators such as IP addresses, domains, URLs, and emails, including metadata such as confidence levels, validity periods, and severity ratings. The structured output ensures that all non-hash indicators are reported with consistent formatting and can be easily integrated into the final Excel reports.
     [void] OtherIndicatorsReport([string]$MalwareName, [String]$ObservableType, [String]$ObservableValue) {
         $ReportEntry = [PSCustomObject]@{
             "threatTypes"     = " "
@@ -159,6 +209,9 @@ class TMC {
         $this.OtherIndicatorsReportData.Add($ReportEntry) | Out-Null; 
     }
 
+    # --- Method: OrganizeIOC ---
+    # Purpose: Cleans bad character structures out of actor labels and maps strings via 
+    # regex switch trees directly into specialized, deduplicated type buckets.
     [void] OrganizeIOC([string]$MalwareName, [System.Collections.Generic.HashSet[String]]$Indicators) {
         # $MalwareName = ($MalwareName -replace "[\\/\?\*\[\]\(\):]", ' ').Trim()
         $MalwareName = ($MalwareName -replace "['’]s|[\\/\?\*\[\]\(\):]", ' ').Trim()
@@ -232,6 +285,11 @@ class TMC {
         }
     }
 
+    # --- Method: GenerateTextFile ---
+    # Purpose: Standard file-writing method that flushes aggregated dictionary collections out to raw text files. 
+    # This method iterates over the organized IOC data and generates a plain text file containing all 
+    # indicators, which can be used for quick reference, sharing, or as an input for other tools that consume 
+    # text-based indicator lists. The generated file is named based on the current date to ensure uniqueness and traceability.
     [void] GenerateTextFile() {
         [String]$FileName = "$($this.GetFileName())_IOCs.txt"
         $FullName = (Get-Location).Path + "\$FileName"
@@ -242,6 +300,9 @@ class TMC {
     }
 
 
+    # --- Method: CreateTMCWorkBook ---
+    # Purpose: Orchestrates layout design configurations, builds custom tab blocks, formats 
+    # column grids dynamically, and compiles final workbook assets to disk.
     [Void] CreateTMCWorkBook() {
         [String]$FileName = $this.GetFileName()
         $FullName = (Get-Location).Path + "\$FileName.xlsx"
@@ -259,6 +320,8 @@ class TMC {
                 Write-Warning "Sheet Name: $SheetName"
                 $WorkSheet.Name = $SheetName
                 $this.OrganizeIOC($MalwareName, $this.IOCData[$MalwareName])
+
+                # Render columns out onto the spreadsheet grid sequentially based on active collection counts, starting with the most critical IOC types (hashes) and then moving into network observables, and finally dumping any uncategorized data into a catch-all column at the end for manual review.
                 $CurrentCol = 0
                 $this.WriteIOCColumn($this.MD5, $WorkSheet, [ref]$CurrentCol, "MD5")
                 $this.WriteIOCColumn($this.SHA1, $WorkSheet, [ref]$CurrentCol, "SHA1")
@@ -284,6 +347,7 @@ class TMC {
             }
         }
         finally {
+            # Guarantee execution cleanup handles and freeze alerts if a crash triggers mid-write
             if ($null -ne $WorkBook) {
                 # Set DisplayAlerts to false so it doesn't pop up a "Save changes?" window if it crashes
                 $this.Excel.DisplayAlerts = $false
@@ -293,7 +357,14 @@ class TMC {
         }
     }
 
-
+    # --- Method: Load ---
+    # Purpose: Loops through provided files, extracts the malware name from the filename to use as a sheet 
+    # name, validates file existence, invokes the Get-IOC parser to extract indicators and maps the extracted 
+    # IOCs into the global collection under the malware name as key. This method serves as the main entry 
+    # point for processing the input workbooks, coordinating the overall workflow of reading the files, 
+    # extracting and organizing the IOCs, and preparing the data for report generation. It also includes user 
+    # interaction for optional text file generation and ensures that only valid files are processed, improving 
+    # the robustness and usability of the script.
     [void] Load() {
         foreach ($WorkBook in $this.WorkBooks) {
             if ($this.IsValidPath($WorkBook)) {
@@ -332,12 +403,12 @@ class TMC {
     # Small helpers
     [void] FormatHeader($Cell, [string]$Text) {
         $this.WriteToCell($Cell, $Text)
-        $Cell.Interior.ColorIndex = 37 # Light Blue
+        $Cell.Interior.ColorIndex = 37 # Light Blue layout color code
         $Cell.Font.Bold = $true
     }
     
     [void] CenterContent($Cell) {
-        $Cell.HorizontalAlignment = 3 # Center
+        $Cell.HorizontalAlignment = 3 # Alignment center enum mapping
     }
 
     [void] WriteToCell($Cell, $Value) {
@@ -346,6 +417,7 @@ class TMC {
         $Cell.Borders.ColorIndex = 1
     }
 
+    # --- Method: WriteIOCColumn ---
     [void] WriteIOCColumn($Collection, $WorkSheet, [ref]$Col, [string]$Header) {
         if ($Collection.Count -eq 0) { return }
         # Move to the next column
@@ -409,6 +481,13 @@ class TMC {
         $this.CenterContent($WorkSheet.Cells.Item($Row, $Col))
     }
 
+    # --- Method: Dispose ---
+    # Purpose: Essential memory management routine. Shuts down the background application execution 
+    # scope and explicitly unbinds the Marshalling reference counts from the OS kernel 
+    # to avoid trailing, hidden system processes. This method is critical for ensuring that the script does 
+    # not leave behind orphaned Excel processes that can consume system resources and lead to performance 
+    # issues. By explicitly calling the Quit method on the Excel application and releasing the COM object 
+    # reference, the script ensures that all resources are properly cleaned up after execution.
     [void] Dispose() {
         if ($null -ne $this.Excel) {
             try {
@@ -425,26 +504,36 @@ class TMC {
     }
 }
 
-# Script Execution starts from the below
+# ==========================================
+# --- Runtime Script Execution Pipeline ---
+# ==========================================
+# 1. Environment Verification Guard
 if (-not (Test-Path -Path "HKLM:\SOFTWARE\Microsoft\Office\*\Excel")) {
     Write-Error "No Excel Module found in the System"    
     return
 }
+
+# 2. Main Processing Pipeline Block
 [TMC]$Process = [TMC]::new($WorkBooks)
 try {
     $Process.Load()
 
+    # Conditionally compile advanced hash data logs if records exist
     if ($Process.HashReportData.Count -gt 0) {
         Write-Host "`n`n`nGenerating Hash Report. This may take some time..." -ForegroundColor Green
         New-Report -IOCType "Hash Data" -Data $Process.HashReportData
     }
 
+    # Conditionally compile advanced network threat logs if records exist
     if ($Process.OtherIndicatorsReportData.Count -gt 0) {
         Write-Host "`n`n`nGenerating Other Indicators Report. This may take some time..." -ForegroundColor Green
         New-Report -IOCType "Other Indicators" -Data $Process.OtherIndicatorsReportData
     }
+
+    # Run workspace folder sorting cleanup routine
     Move-Files
 }
 finally {
+    # 3. Memory Cleanup Execution Hook (Always executes regardless of execution state outcomes)
     $Process.Dispose()
 }

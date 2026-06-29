@@ -1,3 +1,30 @@
+<#
+.SYNOPSIS
+    Evaluates internet domain reputation metrics using the VirusTotal v3 API.
+.DESCRIPTION
+    This script encapsulates VirusTotal v3 domain inspection logic inside a custom 
+    PowerShell class. It extracts valid domain components from a file via strict regex parsing, 
+    de-duplicates them into a .NET HashSet, calls the VirusTotal v3 REST API endpoint, aggregates 
+    threat telemetry analysis stats, and returns a pipeline-safe list of PSCustomObjects.
+.PARAMETER APIKEY
+    The cryptographic API token used to authorize requests to the VirusTotal v3 engine.
+.PARAMETER FilePath
+    The absolute or relative system path to the file containing raw text threat indicators.
+.EXAMPLE
+    $DomainsData = .\Domains.ps1 -APIKEY "VT_Private_Key_123" -FilePath "C:\IOCs\domains.txt"
+
+    If there is only one domain in the file, the output will be a single PSCustomObject. If there are multiple domains, the output will be a list of PSCustomObjects. Each object contains the domain name, the count of malicious detections versus total checks, and a breakdown of analysis stats.
+
+    If you strictly want a list output, you can cast the result to a list of PSCustomObjects as shown in the Example - 2. This allows for consistent handling of the output regardless of the number of domains processed.
+.EXAMPLE
+    [System.Collections.Generic.List[PSCustomObject]]$DomainsData = .\Domains.ps1 -APIKEY "VT_Private_Key_123" -FilePath "C:\IOCs\domains.txt"
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+    Dependencies: Relies on the relative helper script 'root\IOC.ps1'.
+#>
+
+
 [CmdletBinding()]
 param (
     [Parameter(Mandatory)]
