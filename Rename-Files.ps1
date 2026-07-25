@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-    Renames Excel files in a target directory and formats them for TMC script ingestion.
+    Renames Excel files in a target directory and formats them for Collector script ingestion.
 .DESCRIPTION
     This script acts as a preprocessing utility. It validates a target directory path,
     prompts the user with a validated Yes/No loop, and sequentially renames files to a standardized 
     "A-N.xlsx" format. It then compiles the absolute file paths into a single comma-separated 
-    string ready to copy directly into your TMC script configuration.
+    string ready to copy directly into your Collector script configuration.
 .PARAMETER Path
     The absolute or relative file path pointing to the folder containing your target files.
 .EXAMPLE
     .\Rename-Files.ps1 -Path "D:\Projects\MalwareSamples"
-    MalwareSamples may contain any number of excel files. This command will rename them to A-1.xlsx, A-2.xlsx, etc., and output a formatted string of their paths for TMC script use.
+    MalwareSamples may contain any number of excel files. This command will rename them to A-1.xlsx, A-2.xlsx, etc., and output a formatted string of their paths for Collector script use.
 .NOTES
     Author: SivaMani70
     Date: May 2026

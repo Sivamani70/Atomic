@@ -31,7 +31,7 @@ param (
 )
 
 # Import the core Excel layout sheet generation infrastructure, which provides the New-ExcelReport function used to compile and format the final report
-. "$PSScriptRoot\root\ReportSheet.ps1"
+. "$PSScriptRoot\root\NewExcelReport.ps1"
 
 
 # --- Function: Get-IOCReport ---

@@ -1,3 +1,29 @@
+<#
+.SYNOPSIS
+    Terminal UI helper module for randomized prompt messaging.
+
+.DESCRIPTION
+    This script defines the `Get-Prompt` function, which selects a randomized, humorous prompt 
+    string from a predefined list. It is designed to be dot-sourced by interactive utility modules 
+    (such as `Get-FileName` inside report generators) when requesting input from the user.
+
+.EXAMPLE
+    # Dot-source the script and retrieve a prompt:
+    . $PSScriptRoot\Prompts.ps1
+    $PromptText = Get-Prompt
+    Write-Host $PromptText -ForegroundColor Yellow
+
+.OUTPUTS
+    [string] A randomly selected prompt message.
+
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+#>
+
+
+
+
 function Get-Prompt {
     $Prompts = @(
         "Choose wisely! I haven't added any checks here, so if you give me a garbage name, I'll give you a garbage result.",

@@ -31,7 +31,7 @@ param (
 )
 
 # Import the core reporting layout infrastructure script, which provides the New-Report function used to create individual Excel (or) CSV reports for each indicator type
-. "$PSScriptRoot\root\ExcelReport.ps1"
+. "$PSScriptRoot\root\ExcelOrCSVReport.ps1"
 
 # --- Function: Get-IOCReport ---
 # Purpose: Core coordinator block that maps distinct indicator types to sub-scripts,

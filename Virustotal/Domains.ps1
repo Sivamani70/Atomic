@@ -1,27 +1,38 @@
 <#
 .SYNOPSIS
-    Evaluates internet domain reputation metrics using the VirusTotal v3 API.
+    Backend worker script for retrieving VirusTotal reputation scores for Domains.
+
 .DESCRIPTION
-    This script encapsulates VirusTotal v3 domain inspection logic inside a custom 
-    PowerShell class. It extracts valid domain components from a file via strict regex parsing, 
-    de-duplicates them into a .NET HashSet, calls the VirusTotal v3 REST API endpoint, aggregates 
-    threat telemetry analysis stats, and returns a pipeline-safe list of PSCustomObjects.
+    This script defines and executes the `DomainRep` class, which interacts with the 
+    VirusTotal API v3. It extracts valid domains from a specified file, and queries their reputation. 
+
+    If the domain is not found in VirusTotal's database, it will log a warning with 404. The script also handles API rate limits gracefully.
+
+    NOTE: This script is not intended to be executed directly by the user. It acts as 
+    a specialized module invoked by wrapper scripts like MIXR.ps1 and SOLO.ps1.
+
 .PARAMETER APIKEY
-    The cryptographic API token used to authorize requests to the VirusTotal v3 engine.
+    The VirusTotal API v3 key required for authentication. This is passed down 
+    dynamically from the invoking wrapper script.
+
 .PARAMETER FilePath
-    The absolute or relative system path to the file containing raw text threat indicators.
-.EXAMPLE
-    $DomainsData = .\Domains.ps1 -APIKEY "VT_Private_Key_123" -FilePath "C:\IOCs\domains.txt"
+    The absolute or relative path to the text file containing the Indicators of 
+    Compromise (IOCs) to be processed. Passed down from the wrapper script.
 
-    If there is only one domain in the file, the output will be a single PSCustomObject. If there are multiple domains, the output will be a list of PSCustomObjects. Each object contains the domain name, the count of malicious detections versus total checks, and a breakdown of analysis stats.
-
-    If you strictly want a list output, you can cast the result to a list of PSCustomObjects as shown in the Example - 2. This allows for consistent handling of the output regardless of the number of domains processed.
 .EXAMPLE
-    [System.Collections.Generic.List[PSCustomObject]]$DomainsData = .\Domains.ps1 -APIKEY "VT_Private_Key_123" -FilePath "C:\IOCs\domains.txt"
+    # Invocation via the MIXR wrapper script:
+    .\MIXR.ps1 -APIKEY "VT_Crypto_Token_XYZ" -IOC_FilePath "C:\Threats\today_iocs.txt"
+
+.EXAMPLE
+    # Invocation via the SOLO wrapper script:
+    .\SOLO.ps1 -APIKEY "VT_Crypto_Token_XYZ" -IOC_FilePath "C:\Threats\today_iocs.txt"
+
 .NOTES
     Author: SivaMani70
     Date: May 2026
-    Dependencies: Relies on the relative helper script 'root\IOC.ps1'.
+
+    Dependencies: Requires `IOC.ps1` to be present in the `..\root\` directory relative 
+    to this script's location for the `Get-IOC_TXT` function.
 #>
 
 
@@ -42,9 +53,12 @@ Class DomainRep {
     [System.Collections.Generic.HashSet[String]]$ListOfDomains
     [System.Collections.Generic.List[PSCustomObject]]$Data
     [Hashtable]$Headers = @{}
+    [bool]$RateLimitHit
+
 
     DomainRep([string]$Path, [string]$Key) {
         $this.FilePath = $Path
+        $this.RateLimitHit = $false
 
         $this.ListOfDomains = New-Object System.Collections.Generic.HashSet[String]
         $this.Data = New-Object System.Collections.Generic.List[PSCustomObject]
@@ -76,6 +90,11 @@ Class DomainRep {
         Write-Host "Checking Domain reputation..." -ForegroundColor Green
 
         foreach ($Domain in $this.ListOfDomains) {
+            if ($this.RateLimitHit) {
+                Write-Warning "VirusTotal API: Rate limit has been hit. Stopping further requests."
+                break
+            }
+
             Write-Host "Domain: $Domain" -ForegroundColor Green
             [String]$FinalURL = $this.ENDPOINT + $Domain
             try {
@@ -110,6 +129,7 @@ Class DomainRep {
 
                     switch ($StatusCode) {
                         429 {
+                            $this.RateLimitHit = $true
                             Write-Warning "VirusTotal API: Rate limit exceeded (429). Please wait before retrying."
                             break
                         }

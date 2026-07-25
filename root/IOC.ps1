@@ -1,3 +1,32 @@
+<#
+.SYNOPSIS
+    Indicator of Compromise (IOC) extraction and sanitization module.
+
+.DESCRIPTION
+    This script provides the `IOC` class along with procedural wrapper functions (`Get-IOC` and `Get-IOC_TXT`) to extract, sanitize and deduplicate threat indicators 
+    from both Microsoft Excel workbooks (.xlsx) and plain-text (.txt) files.
+
+    Key Features:
+    - Automatically de sanitizes indicators (e.g., converting `[.]`, `[:]`, `[://]` back to standard formats).
+    - Removes wrapping brackets and parentheses `(`, `)`, `[`, `]`.
+    - Filters out standard spreadsheet table headers (e.g., "hashes", "ip address", "url") using a built-in blacklist.
+    - Guarantees unique outputs by aggregating results into a `HashSet[String]`.
+    - Skips non-IOC sheets like "Techniques and Tactics" automatically.
+
+.OUTPUTS
+    [System.Collections.Generic.HashSet[String]] Set of unique, de sanitized IOCs.
+
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+
+    Not meant to be executed directly. Use wrapper functions `Get-IOC` or `Get-IOC_TXT` for proper invocation.
+    As of now using inside the TMC, IOC_90Day_Aggregator.ps1 and inside virustotal scripts to extract IOCs from Excel and TXT files.
+    Dependencies: Requires Microsoft Excel COM Object (`Excel.Application`) for workbook processing.
+#>
+
+
+
 function Get-IOC {
     param (
         [Parameter(Mandatory = $true)]
@@ -57,7 +86,7 @@ class IOC {
                 foreach ($Cell in $Data) {
                     # Skip if the cell is null or just empty space
                     if ([string]::IsNullOrWhiteSpace($Cell)) { continue }
-                    $Indicator = [string]$Cell.ToLower().Trim().Replace("[:]", ":").Replace("[://]", "://").Replace("[.]", ".")
+                    $Indicator = ([string]$Cell).ToLower().Trim().Replace("[:]", ":").Replace("[://]", "://").Replace("[.]", ".")
                     if ($Indicator -in $this.Blacklist) {
                         continue
                     }
@@ -77,7 +106,7 @@ class IOC {
         $Content = Get-content -path $this.FilePath
         foreach ($Indicator in $Content) {
             if ([string]::IsNullOrWhiteSpace($Indicator)) { continue }
-            $Indicator = [string]$Indicator.ToLower().Trim().Replace("[:]", ":").Replace("[://]", "://").Replace("[.]", ".").Replace("(", "").Replace(")", "").Replace("[", "").Replace("]", "")
+            $Indicator = ([string]$Indicator).ToLower().Trim().Replace("[:]", ":").Replace("[://]", "://").Replace("[.]", ".").Replace("(", "").Replace(")", "").Replace("[", "").Replace("]", "")
             if ($Indicator -in $this.Blacklist) {
                 continue
             }

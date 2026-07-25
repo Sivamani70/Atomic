@@ -16,7 +16,7 @@
 .NOTES
     Author: SivaMani70
     Date: May 2026
-    Dependency: Requires external scripts 'root\IOC.ps1' and 'root\ExcelReport.ps1'.
+    Dependency: Requires external scripts 'root\IOC.ps1' and 'root\ExcelOrCSVReport.ps1'.
 #>
 [CmdletBinding()]
 param (
@@ -28,7 +28,7 @@ param (
 
 # Import required baseline functional scripts
 . $PSScriptRoot\root\IOC.ps1
-. $PSScriptRoot\root\ExcelReport.ps1
+. $PSScriptRoot\root\ExcelOrCSVReport.ps1
 
 class AbuseIPRep {
     # Validations & Constant Mappings
@@ -42,11 +42,13 @@ class AbuseIPRep {
     [System.Collections.Generic.HashSet[String]]$ListOfIP
     [System.Collections.Generic.List[PSCustomObject]]$Data
     [Hashtable]$Headers = @{}
+    [bool]$RateLimitHit
 
     # --- Constructor ---
     # Initializes properties, prepares telemetry headers, and configures memory spaces
     AbuseIPRep([string]$Path, [string]$Key) {
         $this.FilePath = $Path
+        $this.RateLimitHit = $false
 
         $this.ListOfIP = New-Object System.Collections.Generic.HashSet[String]
         $this.Data = New-Object System.Collections.Generic.List[PSCustomObject]
@@ -85,6 +87,12 @@ class AbuseIPRep {
         Write-Host "Checking IP reputation..." -ForegroundColor Green
 
         foreach ($Ip in $this.ListOfIP) {
+
+            if ($this.RateLimitHit) {
+                Write-Warning "AbuseIPDB API: Rate limit has been hit. Stopping further requests."
+                break
+            }
+            
             Write-Host "IP: $Ip" -ForegroundColor Green
 
             [Hashtable]$QueryParameters = @{
@@ -121,6 +129,7 @@ class AbuseIPRep {
                     # REST Exception handling maps API error status boundaries to user-friendly warnings and logs for operational visibility
                     switch ($StatusCode) {
                         429 {
+                            $this.RateLimitHit = $true
                             Write-Warning "AbuseIPDB API: Rate limit exceeded (429). Please wait before retrying."
                             break
                         }

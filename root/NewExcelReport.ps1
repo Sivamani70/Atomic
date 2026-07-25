@@ -1,3 +1,27 @@
+<#
+.SYNOPSIS
+    Excel report generation module for Threat Intelligence IOC reputation data.
+
+.DESCRIPTION
+    This script converts dynamic collections of Indicator of Compromise (IOC) reputation data 
+    into a cleanly formatted Microsoft Excel (.xlsx) workbook using COM automation. 
+    
+    It accepts structured dictionary data, creates separate worksheets for each IOC category 
+    (e.g., URL, IP, Hash), dynamically generates headers based on object properties, applies 
+    custom styling/borders, auto-fits columns, and ensures clean release of the Excel COM process.
+
+    NOTE: This script is not intended to be executed directly by the user. It acts as 
+    a specialized module invoked by wrapper scripts like MIXR.ps1.
+
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+
+    Dependencies:
+    - Requires Microsoft Excel installed locally on the system executing the script.
+    - Requires `Prompts.ps1` in `$PSScriptRoot` for terminal user prompts.
+#>
+
 . $PSScriptRoot\Prompts.ps1
 
 function Get-FileName() {

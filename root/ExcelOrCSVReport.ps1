@@ -1,3 +1,24 @@
+<#
+.SYNOPSIS
+    Excel or CSV report generation module for Threat Intelligence IOC reputation data.
+
+.DESCRIPTION
+    This script converts dynamic collections of Indicator of Compromise (IOC) reputation data 
+    into a cleanly formatted Microsoft Excel (.xlsx) workbook using COM automation.
+    If Microsoft Excel is not installed on the system, it gracefully falls back to generating a standard .csv file.
+
+    NOTE: This script is not intended to be executed directly by the user. It acts as 
+    a specialized module invoked by wrapper scripts like AbuseIPDB Script and SOLO.ps1.
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+
+    Dependencies: Relies on an external file located at $PSScriptRoot\Prompts.ps1 which must contain the Get-Prompt function.
+    
+#>
+
+
+
 . $PSScriptRoot\Prompts.ps1
 
 function New-Report([string]$IOCType, [System.Collections.Generic.List[PSCustomObject]]$Data) {

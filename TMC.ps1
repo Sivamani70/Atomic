@@ -12,7 +12,7 @@
 .EXAMPLE
     .\TMC.ps1 -WorkBooks "D:\IOCs\ActorGroupA.xlsx"
 .EXAMPLE
-    .\TMC.ps1 -WorkBooks "D:\IOCs\ActorGroupA.xlsx","D:\IOCs\CampaignB.xlsx",,"D:\IOCs\CampaignC.xlsx"
+    .\TMC.ps1 -WorkBooks "D:\IOCs\ActorGroupA.xlsx","D:\IOCs\CampaignB.xlsx","D:\IOCs\CampaignC.xlsx"
 .NOTES
     Author: SivaMani70
     Date: May 2026
@@ -29,7 +29,7 @@ param (
 
 # Import required dependency baseline components for IOC parsing, Excel report generation, and file movement operations
 . $PSScriptRoot\root\IOC.ps1
-. $PSScriptRoot\root\ExcelReport.ps1
+. $PSScriptRoot\root\ExcelOrCSVReport.ps1
 . $PSScriptRoot\Move.ps1
 class TMC {
     # --- Class Properties ---

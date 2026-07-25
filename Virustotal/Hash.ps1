@@ -1,3 +1,41 @@
+<#
+.SYNOPSIS
+    Backend worker script for retrieving VirusTotal reputation scores for Hashes.
+
+.DESCRIPTION
+    This script defines and executes the `HashRep` class, which interacts with the 
+    VirusTotal API v3. It extracts valid Hashes from a specified file, and queries their reputation. 
+
+    If the Hash is not found in VirusTotal's database, it will log a warning with 404. The script also handles API rate limits gracefully.
+
+    NOTE: This script is not intended to be executed directly by the user. It acts as 
+    a specialized module invoked by wrapper scripts like MIXR.ps1 and SOLO.ps1.
+
+.PARAMETER APIKEY
+    The VirusTotal API v3 key required for authentication. This is passed down 
+    dynamically from the invoking wrapper script.
+
+.PARAMETER FilePath
+    The absolute or relative path to the text file containing the Indicators of 
+    Compromise (IOCs) to be processed. Passed down from the wrapper script.
+
+.EXAMPLE
+    # Invocation via the MIXR wrapper script:
+    .\MIXR.ps1 -APIKEY "VT_Crypto_Token_XYZ" -IOC_FilePath "C:\Threats\today_iocs.txt"
+
+.EXAMPLE
+    # Invocation via the SOLO wrapper script:
+    .\SOLO.ps1 -APIKEY "VT_Crypto_Token_XYZ" -IOC_FilePath "C:\Threats\today_iocs.txt"
+
+.NOTES
+    Author: SivaMani70
+    Date: May 2026
+
+    Dependencies: Requires `IOC.ps1` to be present in the `..\root\` directory relative 
+    to this script's location for the `Get-IOC_TXT` function.
+#>
+
+
 [CmdletBinding()]
 param (
     [Parameter(Mandatory)]
@@ -18,9 +56,12 @@ class HashRep {
     [System.Collections.Generic.HashSet[String]]$ListOfHashes
     [System.Collections.Generic.List[PSCustomObject]]$Data
     [Hashtable]$Headers = @{}
+    [bool]$RateLimitHit
+
 
     HashRep([string]$Path, [string]$Key) {
         $this.FilePath = $Path
+        $this.RateLimitHit = $false
 
         $this.ListOfHashes = New-Object System.Collections.Generic.HashSet[String]
         $this.Data = New-Object System.Collections.Generic.List[PSCustomObject]
@@ -52,6 +93,11 @@ class HashRep {
         Write-Host "Checking Hash reputation..." -ForegroundColor Green
 
         foreach ($Hash in $this.ListOfHashes) {
+            if ($this.RateLimitHit) {
+                Write-Warning "VirusTotal API: Rate limit has been hit. Stopping further requests."
+                break
+            }
+
             Write-Host "Hash: $Hash" -ForegroundColor Green
             [String]$FinalURL = $this.ENDPOINT + $Hash
             try {
@@ -112,7 +158,12 @@ class HashRep {
                     $StatusCode = [int]$Resp.StatusCode
 
                     switch ($StatusCode) {
+                        404 {
+                            Write-Warning "VirusTotal API: Hash not found (404). The hash may not be recognized by VirusTotal."
+                            break
+                        }
                         429 {
+                            $this.RateLimitHit = $true
                             Write-Warning "VirusTotal API: Rate limit exceeded (429). Please wait before retrying."
                             break
                         }
@@ -132,6 +183,4 @@ class HashRep {
     }    
 }
 
-
-Write-Host "Key: $APIKEY" -ForegroundColor Green
 ([HashRep]::new($FilePath, $APIKEY)).Check()
