@@ -2,10 +2,10 @@
 
 This module provides enterprise-grade email parsing and incident report generation capabilities. It transforms raw EML (email) files into professionally formatted Word documents (.docx) with integrated threat intelligence analysis, including VirusTotal reputation checks and WHOIS domain information.
 
-## Table of Contents
+## 📑 Table of Contents
 
 - [Email to Word Document Parser (eml_2_docx)](#email-to-word-document-parser-eml_2_docx)
-  - [Table of Contents](#table-of-contents)
+  - [📑 Table of Contents](#-table-of-contents)
   - [Overview](#overview)
     - [Perfect For](#perfect-for)
   - [Features](#features)

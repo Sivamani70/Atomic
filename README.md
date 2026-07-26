@@ -2,7 +2,10 @@
 
 A PowerShell-based toolkit for analyzing Indicators of Compromise (IOCs) against VirusTotal and AbuseIPDB's threat intelligence database. This project provides two distinct workflows for threat assessment: **SOLO** (for isolated reports) and **MIXR** (for consolidated Excel workbooks).
 
+## 📑 Table of Contents
+
 - [IOC Analysis Suite](#ioc-analysis-suite)
+  - [📑 Table of Contents](#-table-of-contents)
   - [🎯 Overview](#-overview)
   - [📋 Features](#-features)
   - [🚀 Getting Started](#-getting-started)
