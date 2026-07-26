@@ -184,7 +184,6 @@ Atomic/
 │   ├── Hash.ps1              # File Hash (MD5/SHA1/SHA256) reputation worker
 │   ├── IP.ps1                # IP Address reputation worker
 │   └── Url.ps1               # URL analysis and polling worker
-│   └── README.md             # Documentation file
 │
 ├── AbuseIPDB.ps1             # AbuseIPDB API reputation worker
 ├── IOC_90Day_Aggregator.ps1  # Aggregates IOC history across a 90-day window
