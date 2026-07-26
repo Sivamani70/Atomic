@@ -73,8 +73,8 @@ class NewDOC {
         $ResolvedIPS = $ResolvedIPS.TrimEnd("|", " ")
 
         
-        # Domain LookUP in Virust Total
-        Write-Host "$Domain LookUP in Virust Total" -ForegroundColor Green
+        # Domain LookUP in VirusTotal
+        Write-Host "$Domain LookUP in VirusTotal" -ForegroundColor Green
         $Headers = @{}
         $Headers.Add("accept", "application/json")
         $Headers.Add("x-apikey", $env:VTAPIKEY)
@@ -90,26 +90,26 @@ class NewDOC {
                 }
             }
             else {
-                Write-Host "$Domain LookUP in Virust Total: Failed" -ForegroundColor Red
+                Write-Host "$Domain LookUP in VirusTotal: Failed" -ForegroundColor Red
                 Write-Warning "Status Code: $($VTresponse.StatusCode)"
-                Write-Warning "Respone Data: $($VTresponse.Content)"
+                Write-Warning "Response Data: $($VTresponse.Content)"
             }
         }
         catch [System.Net.WebException] {
-            Write-Host "$Domain LookUP in Virust Total: Failed" -ForegroundColor Red
+            Write-Host "$Domain LookUP in VirusTotal: Failed" -ForegroundColor Red
             Write-Warning "Status Code $($_.Exception.Response.StatusCode)"
             Write-Warning $($_.Exception.Response)
         }
         catch {
-            Write-Host "$Domain LookUP in Virust Total: Failed" -ForegroundColor Red
+            Write-Host "$Domain LookUP in VirusTotal: Failed" -ForegroundColor Red
             Write-Warning "Something went wrong"
         }
 
 
 
         try {
-            # Domains Whois Lookup
-            Write-Host "Whois LookUP for $Domain in IP2WHOIS" -ForegroundColor Green
+            # Domains WHOIS Lookup
+            Write-Host "WHOIS LookUP for $Domain in IP2WHOIS" -ForegroundColor Green
             $Response = Invoke-WebRequest -UseBasicParsing -Method Get -Uri "https://api.ip2whois.com/v2?key=$($env:IP2LocationAPIKEY)&domain=$Domain"
 
             if ($Response.StatusCode -eq 200) {
@@ -122,18 +122,18 @@ class NewDOC {
                 }
             }
             else {
-                Write-Host "Whois LookUP for $Domain in IP2WHOIS: Failed" -ForegroundColor Red
+                Write-Host "WHOIS LookUP for $Domain in IP2WHOIS: Failed" -ForegroundColor Red
                 Write-Warning "Status Code: $($Response.StatusCode)"
-                Write-Warning "Respone Data: $($Response.Content)"
+                Write-Warning "Response Data: $($Response.Content)"
             }
         }
         catch [System.Net.WebException] {
-            Write-Host "Whois LookUP for $Domain in IP2WHOIS: Failed" -ForegroundColor Red
+            Write-Host "WHOIS LookUP for $Domain in IP2WHOIS: Failed" -ForegroundColor Red
             Write-Warning "Status Code $($_.Exception.Response.StatusCode)"
             Write-Warning $($_.Exception.Response)
         }
         catch {
-            Write-Host "Whois LookUP for $Domain in IP2WHOIS: Failed" -ForegroundColor Red
+            Write-Host "WHOIS LookUP for $Domain in IP2WHOIS: Failed" -ForegroundColor Red
             Write-Warning "Something went wrong"
         }
 
